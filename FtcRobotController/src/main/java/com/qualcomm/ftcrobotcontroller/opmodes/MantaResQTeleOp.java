@@ -1,53 +1,30 @@
-/* Copyright (c) 2014 Qualcomm Technologies Inc
+//Copyright (c) 2015 Manta Mechanics Inc All rights reserved.
 
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without modification,
-are permitted (subject to the limitations in the disclaimer below) provided that
-the following conditions are met:
-
-Redistributions of source code must retain the above copyright notice, this list
-of conditions and the following disclaimer.
-
-Redistributions in binary form must reproduce the above copyright notice, this
-list of conditions and the following disclaimer in the documentation and/or
-other materials provided with the distribution.
-
-Neither the name of Qualcomm Technologies Inc nor the names of its contributors
-may be used to endorse or promote products derived from this software without
-specific prior written permission.
-
-NO EXPRESS OR IMPLIED LICENSES TO ANY PARTY'S PATENT RIGHTS ARE GRANTED BY THIS
-LICENSE. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
-
+//default package statement from the ftc_app-master
+//look into changing this to edu.mantamechanics or org.mantamechanics
 package com.qualcomm.ftcrobotcontroller.opmodes;
 
+//import statements for Modern Robotics hardware
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.Range;
 
+
 /**
  * TeleOp Mode
- * <p>
+ *
  * Enables control of the robot via the gamepad
  */
+
 public class MantaResQTeleOp extends OpMode {
 
     /*
-     * Note: the configuration of the servos is such that
+     * Configuration of motors, servos, and sensors:
      * as the FLIPPER servo approaches 0, the FLIPPER position moves up (away from the floor).
      * Also, as the TURRET servo approaches 0, the TURRET opens up (drops the game element).
      */
+
     // TETRIX VALUES.
     final static double FLIPPER_MIN_RANGE  = 0.20;
     final static double FLIPPER_MAX_RANGE  = 0.90;
@@ -66,11 +43,18 @@ public class MantaResQTeleOp extends OpMode {
     // amount to change the TURRET servo position by
     double turretDelta = 0.1;
 
+
+    //drive motors (tank drive)
     DcMotor motorRight;
     DcMotor motorLeft;
+    DcMotor motorFlipper;
+
+    //collector, turret, and elevator motors
     DcMotor motorCollector;
     DcMotor motorElevator;
+    DcMotor motorTurret;
 
+    //
     Servo flipper;
     Servo turret;
 
@@ -97,12 +81,16 @@ public class MantaResQTeleOp extends OpMode {
 		 */
 		
 		/*
-		 * For the demo Tetrix K9 bot we assume the following,
-		 *   There are two motors "motor_1" and "motor_2"
+		 * MantaResQ assumes the following:
+		 *   Tank Drive:
 		 *   "motor_1" is on the right side of the bot.
 		 *   "motor_2" is on the left side of the bot and reversed.
+		 *
+		 *   Collector and Elevator
+		 *   "motor_3" is the Collector motor
+		 *   "motor_4" is the Elevator motor
 		 *   
-		 * We also assume that there are titwo servos "servo_1" and "servo_6"
+		 * We also assume that there are two servos "servo_1" and "servo_6"
 		 *    "servo_1" controls the FLIPPER joint of the manipulator.
 		 *    "servo_6" controls the TURRET joint of the manipulator.
 		 */
@@ -112,10 +100,12 @@ public class MantaResQTeleOp extends OpMode {
         motorCollector = hardwareMap.dcMotor.get("motor_3");
         motorElevator = hardwareMap.dcMotor.get("motor_4");
 
+
         flipper = hardwareMap.servo.get("servo_1");
         turret = hardwareMap.servo.get("servo_6");
 
         // assign the starting position of the wrist and TURRET
+
         flipperPosition = 0.5;
         turretPosition = 0.5;
     }
@@ -125,45 +115,55 @@ public class MantaResQTeleOp extends OpMode {
      *
      * @see com.qualcomm.robotcore.eventloop.opmode.OpMode#run()
      */
+
     @Override
     public void loop() {
 
 		/*
-		 * Gamepad 1
-		 * 
-		 * Gamepad 1 controls the motors via the left stick, and it controls the
-		 * TURRET via the a,b, x, y buttons
+		 * Gamepad 1 controls:
+		 * - DRIVE
+		 * --left stick drives in "arcade" style (forward/reverse/turn left/turn right)
+		 * --throttle: left_stick_y ranges from -1 to 1, where -1 is full up, and 1 is full down
+		 * --direction: left_stick_x ranges from -1 to 1, where -1 is full left and 1 is full right
+		 *
+		 * --the left and right trigger controls the FLIPPER position
+		 *
+		 * COLLECT AND SCORE
+		 * -- the right stick turns the turret left and right
+		 * -- buttons Y and A control the COLLECTOR/SCORER
+		 *
+		 *
+		 *
 		 */
 
-        // throttle: left_stick_y ranges from -1 to 1, where -1 is full up, and
-        // 1 is full down
-        // direction: left_stick_x ranges from -1 to 1, where -1 is full left
-        // and 1 is full right
         float throttle = -gamepad1.left_stick_y;
         float direction = gamepad1.left_stick_x;
         float right = throttle - direction;
         float left = throttle + direction;
-        float elevator = -gamepad1.right_stick_y;
-        float collectorSpeed = gamepad1.right_stick_x;
+        boolean elevatorUp = gamepad1.dpad_up;
+        boolean elevatorDn = gamepad1.dpad_down;
+        float collectorIntake = gamepad1.right_trigger;
+        float collectorScore = gamepad1.left_trigger;
+
 
         // clip the right/left values so that the values never exceed +/- 1
         right = Range.clip(right, -1, 1);
         left = Range.clip(left, -1, 1);
-        elevator = Range.clip(right, -1, 1);
-        collectorSpeed = Range.clip(left, -1, 1);
+        //elevator = Range.clip(elevator, -1, 1);
+        //collectorSpeed = Range.clip(collectorSpeed, -1, 1);
 
         // scale the joystick value to make it easier to control
         // the robot more precisely at slower speeds.
         right = (float)scaleInput(right);
         left =  (float)scaleInput(left);
-        elevator = (float)scaleInput(right);
-        collectorSpeed =  (float)scaleInput(left);
+        //elevator = (float)scaleInput(elevator);
+        //collectorSpeed =  (float)scaleInput(collectorSpeed);
 
         // write the values to the motors
         motorRight.setPower(right);
         motorLeft.setPower(left);
-        motorCollector.setPower(collectorSpeed);
-        motorElevator.setPower(elevator);
+        //motorCollector.setPower(collectorSpeed);
+        //motorElevator.setPower(elevator);
 
         // update the position of the FLIPPER.
         if (gamepad1.a) {
@@ -179,21 +179,45 @@ public class MantaResQTeleOp extends OpMode {
         }
 
         // update the position of the TURRET
-        if (gamepad1.x) {
-            turretPosition += turretDelta;
+        //if (gamepad1.x) {
+        //    turretPosition += turretDelta;
+        //}
+
+        //if (gamepad1.b) {
+        //    turretPosition -= turretDelta;
+        //}
+
+        if (gamepad2.y) {
+            motorCollector.setPower(0.75);
         }
 
-        if (gamepad1.b) {
-            turretPosition -= turretDelta;
+        else if (gamepad2.a) {
+            motorCollector.setPower(-0.75);
         }
 
-        // cl ip the position values so that they never exceed their allowed range.
-        flipperPosition = Range.clip(flipperPosition, FLIPPER_MIN_RANGE, FLIPPER_MAX_RANGE);
-        turretPosition = Range.clip(turretPosition, TURRET_MIN_RANGE, TURRET_MAX_RANGE);
+        else {
+            motorCollector.setPower(0.0);
+        }
+
+        if (gamepad2.x) {
+            motorElevator.setPower(0.75);
+        }
+
+        else if (gamepad2.b) {
+            motorElevator.setPower(-0.75);
+        }
+
+        else {
+            motorElevator.setPower(0.0);
+        }
+
+        // clip the position values so that they never exceed their allowed range.
+        //flipperPosition = Range.clip(flipperPosition, FLIPPER_MIN_RANGE, FLIPPER_MAX_RANGE);
+        //turretPosition = Range.clip(turretPosition, TURRET_MIN_RANGE, TURRET_MAX_RANGE);
 
         // write position values to the wrist and TURRET servo
-        flipper.setPosition(flipperPosition);
-        turret.setPosition(turretPosition);
+        //flipper.setPosition(flipperPosition);
+        //turret.setPosition(turretPosition);
 
 
 
