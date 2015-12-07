@@ -15,7 +15,7 @@ import com.qualcomm.robotcore.util.Range;
 /**
  * TeleOp Mode
  *
- * Enables control of the robot via the gamepad
+ *
  */
 
 public class MantaResQTeleOp extends OpMode {
