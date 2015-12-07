@@ -13,7 +13,7 @@ import com.qualcomm.robotcore.util.Range;
 
 
 /**
- * TeleOp Mode
+ * TeleOp Mode code
  *
  *
  */
